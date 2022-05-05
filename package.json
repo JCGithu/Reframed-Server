@@ -2,9 +2,9 @@
   "name": "framedserver",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "server": "nodemon index.js"
+    "server": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
