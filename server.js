@@ -25,9 +25,11 @@ function getRoom(socket){
   return roomList[1];
 }
 
-function sortObject(o){
+function sortObject(o, target, round){
   let a = []
-  for (let O in o) a.push({username: O, points: o[O]});
+  for (let O in o) {
+    a.push({username: O, points: o[O].points, round: o[O].round});
+  }
   return a.sort((a,b)=> b.points - a.points); 
 }
 
@@ -103,19 +105,23 @@ io.on('connection', socket => {
     }
 
     let targetRoom = roomData[room];
-    let userPoints = targetRoom.users;
+    let userStore = targetRoom.users;
     let username = socket.username;
 
-    if (userPoints[username]){
-      userPoints[username] = userPoints[username] + data.points;
+    if (userStore[username]){
+      userStore[username].points = userStore[username].points + data.points;
+      userStore[username].round = data.currentRound;
     } else {
       let initData = {
-        [username]: data.points
+        [username]: {
+          points: data.points,
+          round: data.currentRound
+        }
       }
-      Object.assign(userPoints, initData);
+      Object.assign(userStore, initData);
     }
-    
-    let leaderboard = sortObject(userPoints);
+    let leaderboard = sortObject(userStore);
+    console.log(leaderboard);
     io.to(room).emit('leaderboard-update', leaderboard);
   });
 });
