@@ -39,6 +39,16 @@ io.on('connection', socket => {
 
   deleteUnusedRoomData();
 
+  socket.on('disconnect', () => {
+    if (!socket.username) return;
+    let targetRoom = roomData[socket.room];
+    let userStore = targetRoom.users;
+    if (userStore[socket.username]) delete userStore[socket.username];
+    let leaderboard = sortObject(userStore);
+    io.to(socket.room).emit('leaderboard-update', leaderboard);
+    console.log(`${socket.id} disconnected`);
+  })
+
   socket.on('set-username', username => {
     username = username.toUpperCase();
     let listofUsernames = Array.from(io.sockets.sockets).map(socket => socket[1].username);
@@ -63,6 +73,7 @@ io.on('connection', socket => {
     };
     room = parseInt(room);
     socket.join(room);
+    socket.room = room;
     console.log(`${userList.get(socket.id)} joined ${room}`);
     io.to(socket.id).emit('joined-room', 'yes!');
     let idsInRoom = io.sockets.adapter.rooms.get(room);
@@ -76,35 +87,51 @@ io.on('connection', socket => {
   socket.on('room-exist', room => {
     let listOfRooms = [ ...io.sockets.adapter.rooms.keys()];
     io.to(socket.id).emit('room-exist-return', listOfRooms.includes(parseInt(room)));
+  });
+
+  socket.on('log-user', data => {
+    let userStore = roomData[socket.room].users;
+    let username = socket.username;
+    if (!userStore[username]){
+      let initData = {
+        [username]: {
+          points: 0,
+          round: data.currentRound - 1
+        }
+      }
+      Object.assign(userStore, initData);
+    }
+    let leaderboard = sortObject(userStore);
+    console.log(leaderboard);
+    io.to(socket.room).emit('leaderboard-update', leaderboard);
   })
 
   socket.on('host-start', data => {
-    let room = getRoom(socket);
     data.currentRound = 1;
-    Object.assign(roomData[room], data);
-    console.log(roomData[room]);
-    io.to(room).emit('round-start', roomData[room]);
+    Object.assign(roomData[socket.room], data);
+    console.log(roomData[socket.room]);
+    io.to(socket.room).emit('round-start', roomData[socket.room]);
   });
 
   socket.on('next-round', data => {
-    let room = getRoom(socket);
-    let targetRoom = roomData[room]
+    //let room = getRoom(socket);
+    console.log('round');
+    let targetRoom = roomData[socket.room]
     if (targetRoom.currentRound < targetRoom.numberOfRounds){
       targetRoom.currentRound++;
     }
-    console.log(roomData[room]);
-    io.to(room).emit('round-start', roomData[room]);
+    console.log(roomData[socket.room]);
+    io.to(socket.room).emit('round-start', roomData[socket.room]);
   });
 
   socket.on('user-round', data => {
-    let room = getRoom(socket);
     if (!data.won) {
       data.points = 0;
     } else {
       data.points = 6 - data.turns;
     }
 
-    let targetRoom = roomData[room];
+    let targetRoom = roomData[socket.room];
     let userStore = targetRoom.users;
     let username = socket.username;
 
@@ -122,7 +149,7 @@ io.on('connection', socket => {
     }
     let leaderboard = sortObject(userStore);
     console.log(leaderboard);
-    io.to(room).emit('leaderboard-update', leaderboard);
+    io.to(socket.room).emit('leaderboard-update', leaderboard);
   });
 });
 
