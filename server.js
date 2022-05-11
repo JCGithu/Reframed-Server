@@ -132,6 +132,12 @@ io.on('connection', socket => {
     }
 
     let targetRoom = roomData[socket.room];
+    if (!targetRoom.users){
+      console.log('ERROR WITH NO USERS')
+      console.log(socket.username + ':' + socket.room);
+      console.log(targetRoom);
+      return;
+    }
     let userStore = targetRoom.users;
     let username = socket.username;
 
